@@ -178,7 +178,7 @@ func ShowBlockie(ctxApp context.Context, cp *plugin.ExecutedCommand) error {
 	if err != nil {
 		panic(err)
 	}
-	if err := gasMaxWidget.Write("How much gas.\n\n"); err != nil {
+	if err := gasMaxWidget.Write(" "); err != nil {
 		panic(err)
 	}
 
@@ -399,10 +399,7 @@ func ShowBlockie(ctxApp context.Context, cp *plugin.ExecutedCommand) error {
 // writeGasWidget writes the status to the healthWidget.
 // Exits when the context expires.
 func writeGasWidget(ctx context.Context, info Info, tMax *text.Text, tAvgBlock *text.Text, tAvgTx *text.Text, tLatest *text.Text, delay time.Duration, connectionSignal chan string, genesisInfo gjson.Result) {
-	tMax.Write("0")
-	tAvgBlock.Write("0")
-	tLatest.Write("0")
-	tAvgTx.Write("0")
+	tMax.Reset()
 
 	ticker := time.NewTicker(delay)
 	defer ticker.Stop()
@@ -411,31 +408,14 @@ func writeGasWidget(ctx context.Context, info Info, tMax *text.Text, tAvgBlock *
 		select {
 		case <-ticker.C:
 			tMax.Reset()
-			tAvgBlock.Reset()
-			tAvgTx.Reset()
-			tLatest.Reset()
 
-			totalGasWanted := uint64(info.blocks.totalGasWanted)
-			totalBlocks := uint64(info.blocks.amount)
-			totalGasPerBlock := uint64(0)
-
-			// don't divide by 0
-			if totalBlocks > 0 {
-				totalGasPerBlock = uint64(totalGasWanted / totalBlocks)
+			if info.blocks.maxGasWanted == 0 {
+				tMax.Write(fmt.Sprintf("%v", "unlimited"))
+			} else {
+				// tMax.Write(fmt.Sprintf("%v", numberWithComma(info.blocks.maxGasWanted)))
+				tMax.Write(fmt.Sprintf("%v", info.blocks.maxGasWanted))
 			}
-
-			totalTransactions := uint64(info.transactions.amount)
-
-			// don't divide by 0
-			averageGasPerTx := uint64(0)
-			if totalTransactions > 0 {
-				averageGasPerTx = uint64(totalGasWanted / info.transactions.amount)
-			}
-
-			tMax.Write(fmt.Sprintf("%v", numberWithComma(info.blocks.maxGasWanted)))
-			tAvgBlock.Write(fmt.Sprintf("%v", numberWithComma(int64(totalGasPerBlock))))
-			tLatest.Write(fmt.Sprintf("%v", numberWithComma(info.blocks.lastTx)))
-			tAvgTx.Write(fmt.Sprintf("%v", numberWithComma(int64(averageGasPerTx))))
+			
 		case <-ctx.Done():
 			return
 		}
@@ -509,7 +489,8 @@ func writeBlocks(ctx context.Context, info Info, t *text.Text, tCompleteBlock *t
 			}
 
 			info.blocks.amount++
-			info.blocks.maxGasWanted = gjson.Get(message, "result.data.value.result_end_block.consensus_param_updates.block.max_gas").Int()
+			block_max_gas := gjson.Get(message, "result.data.value.result_end_block.consensus_param_updates.block.max_gas")
+			info.blocks.maxGasWanted = block_max_gas.Int()
 
 			// Populate Header
 			tHeader.Reset()
