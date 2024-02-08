@@ -20,15 +20,13 @@ ignite chain serve
 
 To install Blockie, ensure you have Ignite CLI installed and follow these steps:
 
-1. Clone the repository or download the source code to your local machine.
-2. Navigate to the root directory of the application in your terminal.
-3. Run the following command to add the app to your global configuration:
+1. Run the following command to add the app to your global configuration:
 
 ```bash
 ignite app install -g github.com/toschdev/blockie
 ```
 
-1. You can now use the **`ignite testnet`** command to launch a local version of the app.
+2. You can now use the **`ignite blockie start`** command to launch.
 
 ## **Development Workflow**
 
