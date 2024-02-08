@@ -1,4 +1,4 @@
-# **Blockie - Terminal Block Explorer for Ignite**
+# **Blockie - Block Analyser for Ignite**
 
 Blockie is a terminal-based block explorer for the Ignite blockchain that allows developers to view detailed information about each block in real-time as they are processed. This powerful tool provides insights directly in the terminal, including metrics such as block processing time, block height, specific block headers, their structure, and the complete JSON data of the blocks.
 
