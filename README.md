@@ -10,7 +10,7 @@ Blockie is a terminal-based block explorer for the Ignite blockchain that allows
 
 ## Prerequisites
 
-Have a blockchain running. Favorably with [Ignite CLI](https://github.com/ignite/cli) and
+Have a blockchain running. Favorably with [Ignite CLI](https://github.com/ignite/cli) and currently only default ports (26657)
 
 ```bash
 ignite chain serve
