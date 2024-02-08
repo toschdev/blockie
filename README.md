@@ -8,6 +8,14 @@ Blockie is a terminal-based block explorer for the Ignite blockchain that allows
 - **Detailed Insights**: Access to block time, height, headers, and complete JSON structure.
 - **Developer-Focused**: A tool designed with blockchain developers in mind for enhanced insight into the blockchain they are working on.
 
+## Prerequisites
+
+Have a blockchain running. Favorably with [Ignite CLI](https://github.com/ignite/cli) and
+
+```bash
+ignite chain serve
+```
+
 ## **Installation**
 
 To install Blockie, ensure you have Ignite CLI installed and follow these steps:
