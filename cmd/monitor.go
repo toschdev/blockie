@@ -40,8 +40,8 @@ import (
 	"github.com/mum4k/termdash/linestyle"
 	"github.com/mum4k/termdash/terminal/termbox"
 	"github.com/mum4k/termdash/terminal/terminalapi"
-	"github.com/mum4k/termdash/widgets/donut"
 	"github.com/mum4k/termdash/widgets/text"
+	"github.com/mum4k/termdash/widgets/gauge"
 
 	"github.com/ignite/cli/v28/ignite/services/plugin"
 	"github.com/tidwall/pretty"
@@ -49,7 +49,15 @@ import (
 	"github.com/jedib0t/go-pretty/v6/list"
 )
 
-// optional port variable. example: `gex -p 30057`
+// playType indicates how to play a gauge.
+type playType int
+
+const (
+	playTypePercent playType = iota
+	playTypeAbsolute
+)
+
+// optional port variable.
 var givenPort = flag.Int("p", 26657, "port to connect")
 var givenHost = flag.String("h", "localhost", "host to connect")
 var ssl = flag.Bool("s", false, "use SSL for connection")
@@ -74,9 +82,6 @@ type Blocks struct {
 type Transactions struct {
 	amount uint64
 }
-
-// playType indicates the type of the donut widget.
-type playType int
 
 func ShowBlockie(ctxApp context.Context, cp *plugin.ExecutedCommand) error {
 	flag.Parse()
@@ -236,7 +241,7 @@ func ShowBlockie(ctxApp context.Context, cp *plugin.ExecutedCommand) error {
 		panic(err)
 	}
 
-	// Complete Block parsing widget
+	// Block Header parsing widget
 	blocksHeaderWidget, err := text.New(text.RollContent(), text.WrapAtWords())
 	if err != nil {
 		panic(err)
@@ -270,6 +275,25 @@ func ShowBlockie(ctxApp context.Context, cp *plugin.ExecutedCommand) error {
 		panic(err)
 	}
 
+	slim, err := gauge.New(
+		gauge.Height(1),
+		gauge.Border(linestyle.Light),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	// Round Text parsing widget
+	roundTextWidget, err := text.New(text.RollContent(), text.WrapAtWords())
+	if err != nil {
+		panic(err)
+	}
+	if err := roundTextWidget.Write("Block Round.\n\n"); err != nil {
+		panic(err)
+	}
+
+	go playGauge(ctx, slim, roundTextWidget, connectionSignal)
+
 	// END INITIALISING WIDGETS
 
 	// The functions that execute the updating widgets.
@@ -301,37 +325,58 @@ func ShowBlockie(ctxApp context.Context, cp *plugin.ExecutedCommand) error {
 			container.Left(
 				container.SplitHorizontal(
 					container.Top(
-						container.SplitVertical(
-							container.Left(
+						container.SplitHorizontal(
+							container.Top(
 								container.SplitVertical(
 									container.Left(
-
-										container.Border(linestyle.Light),
-										container.BorderTitle("Chain-ID"),
-										container.PlaceWidget(currentNetworkWidget),
+										container.SplitVertical(
+											container.Left(
+		
+												container.Border(linestyle.Light),
+												container.BorderTitle("Chain-ID"),
+												container.PlaceWidget(currentNetworkWidget),
+											),
+											container.Right(
+												container.Border(linestyle.Light),
+												container.BorderTitle("Max Block Size"),
+												container.PlaceWidget(maxBlocksizeWidget),
+											),
+										),
 									),
 									container.Right(
-										container.Border(linestyle.Light),
-										container.BorderTitle("Max Block Size"),
-										container.PlaceWidget(maxBlocksizeWidget),
+										container.SplitVertical(
+											container.Left(
+												container.Border(linestyle.Light),
+												container.BorderTitle("Gas Max"),
+												container.PlaceWidget(gasMaxWidget),
+											),
+											container.Right(
+												container.Border(linestyle.Light),
+												container.BorderTitle("timeout_commit"),
+												container.PlaceWidget(secondsPerBlockWidget),
+											),
+										),
 									),
 								),
 							),
-							container.Right(
-								container.SplitVertical(
-									container.Left(
+							container.Bottom(
+								container.SplitHorizontal(
+									container.Top(
 										container.Border(linestyle.Light),
-										container.BorderTitle("Gas Max"),
-										container.PlaceWidget(gasMaxWidget),
+										container.BorderTitle("Current Block Round"),
+										container.PlaceWidget(roundTextWidget),
+										container.PaddingLeftPercent(5),
 									),
-									container.Right(
+									container.Bottom(
+
+										container.BorderTitle("Block Round Progress"),
 										container.Border(linestyle.Light),
-										container.BorderTitle("timeout_commit"),
-										container.PlaceWidget(secondsPerBlockWidget),
+										container.PlaceWidget(slim),
 									),
 								),
 							),
 						),
+						
 					),
 					container.Bottom(
 						container.SplitVertical(
@@ -574,62 +619,6 @@ func writeBlocks(ctx context.Context, info Info, t *text.Text, tCompleteBlock *t
 	}
 }
 
-// writeBlockDonut continuously changes the displayed percent value on the donut by the
-// step once every delay. Exits when the context expires.
-func writeBlockDonut(ctx context.Context, d *donut.Donut, start, step int, delay time.Duration, pt playType, connectionSignal <-chan string) {
-	socket := gowebsocket.New(getWsUrl() + "/websocket")
-
-	socket.OnTextMessage = func(message string, socket gowebsocket.Socket) {
-		step := gjson.Get(message, "result.data.value.step")
-		progress := 0
-
-		if step.String() == "RoundStepNewHeight" {
-			progress = 100
-		}
-
-		if step.String() == "RoundStepCommit" {
-			progress = 80
-		}
-
-		if step.String() == "RoundStepPrecommit" {
-			progress = 60
-		}
-
-		if step.String() == "RoundStepPrevote" {
-			progress = 40
-		}
-
-		if step.String() == "RoundStepPropose" {
-			progress = 20
-		}
-
-		if err := d.Percent(progress); err != nil {
-			panic(err)
-		}
-
-	}
-
-	socket.Connect()
-
-	socket.SendText("{ \"jsonrpc\": \"2.0\", \"method\": \"subscribe\", \"params\": [\"tm.event='NewRoundStep'\"], \"id\": 3 }")
-
-	for {
-		select {
-		case s := <-connectionSignal:
-			if s == "no_connection" {
-				socket.Close()
-			}
-			if s == "reconnect" {
-				writeBlockDonut(ctx, d, start, step, delay, pt, connectionSignal)
-			}
-		case <-ctx.Done():
-			log.Println("interrupt")
-			socket.Close()
-			return
-		}
-	}
-}
-
 // writeTransactions writes the latest Transactions to the transactionsWidget.
 // Exits when the context expires.
 func writeTransactions(ctx context.Context, info Info, t *text.Text, connectionSignal <-chan string) {
@@ -661,6 +650,68 @@ func writeTransactions(ctx context.Context, info Info, t *text.Text, connectionS
 			}
 			if s == "reconnect" {
 				writeTransactions(ctx, info, t, connectionSignal)
+			}
+		case <-ctx.Done():
+			log.Println("interrupt")
+			socket.Close()
+			return
+		}
+	}
+}
+
+// playGauge continuously changes the displayed percent value on the gauge by the
+// step once every delay. Exits when the context expires.
+func playGauge(ctx context.Context, g *gauge.Gauge, tRoundWidget *text.Text, connectionSignal <-chan string) {
+	socket := gowebsocket.New(getWsUrl() + "/websocket")
+
+	socket.OnTextMessage = func(message string, socket gowebsocket.Socket) {
+		step := gjson.Get(message, "result.data.value.step")
+		progress := 0
+
+		if step.String() == "RoundStepNewHeight" {
+			progress = 100
+			
+		}
+
+		if step.String() == "RoundStepCommit" {
+			progress = 80
+		}
+
+		if step.String() == "RoundStepPrecommit" {
+			progress = 60
+		}
+
+		if step.String() == "RoundStepPrevote" {
+			progress = 40
+		}
+
+		if step.String() == "RoundStepPropose" {
+			progress = 20
+		}
+
+		tRoundWidget.Reset()
+		if err := tRoundWidget.Write(fmt.Sprintf("%s\n", step.String())); err != nil {
+			panic(err)
+		}
+
+		if err := g.Percent(progress); err != nil {
+			panic(err)
+		}
+		
+	}
+
+	socket.Connect()
+
+	socket.SendText("{ \"jsonrpc\": \"2.0\", \"method\": \"subscribe\", \"params\": [\"tm.event='NewRoundStep'\"], \"id\": 3 }")
+
+	for {
+		select {
+		case s := <-connectionSignal:
+			if s == "no_connection" {
+				socket.Close()
+			}
+			if s == "reconnect" {
+				playGauge(ctx, g, tRoundWidget, connectionSignal)
 			}
 		case <-ctx.Done():
 			log.Println("interrupt")
