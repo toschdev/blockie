@@ -666,6 +666,7 @@ func playGauge(ctx context.Context, g *gauge.Gauge, tRoundWidget *text.Text, con
 
 	socket.OnTextMessage = func(message string, socket gowebsocket.Socket) {
 		step := gjson.Get(message, "result.data.value.step")
+		round := gjson.Get(message, "result.data.value.round")
 		progress := 0
 
 		if step.String() == "RoundStepNewHeight" {
@@ -690,7 +691,7 @@ func playGauge(ctx context.Context, g *gauge.Gauge, tRoundWidget *text.Text, con
 		}
 
 		tRoundWidget.Reset()
-		if err := tRoundWidget.Write(fmt.Sprintf("%s\n", step.String())); err != nil {
+		if err := tRoundWidget.Write(fmt.Sprintf("Step: %s \nRound: %s\n", step.String(), round.String())); err != nil {
 			panic(err)
 		}
 
