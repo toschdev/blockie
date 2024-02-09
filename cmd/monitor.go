@@ -33,7 +33,6 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/mum4k/termdash"
-	"github.com/mum4k/termdash/align"
 	"github.com/mum4k/termdash/cell"
 	"github.com/mum4k/termdash/container"
 	"github.com/mum4k/termdash/keyboard"
@@ -335,11 +334,13 @@ func ShowBlockie(ctxApp context.Context, cp *plugin.ExecutedCommand) error {
 												container.Border(linestyle.Light),
 												container.BorderTitle("Chain-ID"),
 												container.PlaceWidget(currentNetworkWidget),
+												container.PaddingLeftPercent(2),
 											),
 											container.Right(
 												container.Border(linestyle.Light),
 												container.BorderTitle("Max Block Size"),
 												container.PlaceWidget(maxBlocksizeWidget),
+												container.PaddingLeftPercent(2),
 											),
 										),
 									),
@@ -349,11 +350,13 @@ func ShowBlockie(ctxApp context.Context, cp *plugin.ExecutedCommand) error {
 												container.Border(linestyle.Light),
 												container.BorderTitle("Gas Max"),
 												container.PlaceWidget(gasMaxWidget),
+												container.PaddingLeftPercent(2),
 											),
 											container.Right(
 												container.Border(linestyle.Light),
 												container.BorderTitle("timeout_commit"),
 												container.PlaceWidget(secondsPerBlockWidget),
+												container.PaddingLeftPercent(2),
 											),
 										),
 									),
@@ -365,7 +368,7 @@ func ShowBlockie(ctxApp context.Context, cp *plugin.ExecutedCommand) error {
 										container.Border(linestyle.Light),
 										container.BorderTitle("Current Block Round"),
 										container.PlaceWidget(roundTextWidget),
-										container.PaddingLeftPercent(5),
+										container.PaddingLeftPercent(2),
 									),
 									container.Bottom(
 
@@ -383,14 +386,14 @@ func ShowBlockie(ctxApp context.Context, cp *plugin.ExecutedCommand) error {
 							container.Left(
 								container.Border(linestyle.Light),
 								container.BorderTitle("Latest Height"),
-								container.AlignVertical(align.VerticalMiddle),
 								container.PlaceWidget(blocksWidget),
-								container.PaddingLeftPercent(15),
+								container.PaddingLeftPercent(2),
 							),
 							container.Right(
 								container.Border(linestyle.Light),
 								container.BorderTitle("Block Overview"),
 								container.PlaceWidget(blocksTreeWidget),
+								container.PaddingLeftPercent(2),
 							),
 						),
 					),
@@ -405,6 +408,7 @@ func ShowBlockie(ctxApp context.Context, cp *plugin.ExecutedCommand) error {
 								container.Border(linestyle.Light),
 								container.BorderTitle("Block Header"),
 								container.PlaceWidget(blocksHeaderWidget),
+								container.PaddingLeftPercent(2),
 							),
 							container.Right(
 								container.Border(linestyle.Light),
@@ -417,6 +421,7 @@ func ShowBlockie(ctxApp context.Context, cp *plugin.ExecutedCommand) error {
 						container.Border(linestyle.Light),
 						container.BorderTitle("Latest Block in Detail"),
 						container.PlaceWidget(completeBlocksWidget),
+						container.PaddingLeftPercent(2),
 					),
 					container.SplitPercent(40),
 				),
@@ -537,12 +542,77 @@ func writeBlocks(ctx context.Context, info Info, t *text.Text, tCompleteBlock *t
 			block_max_gas := gjson.Get(message, "result.data.value.result_end_block.consensus_param_updates.block.max_gas")
 			info.blocks.maxGasWanted = block_max_gas.Int()
 
+
 			// Populate Header
+			// colorOutputHeader := pretty.Pretty([]byte(currentFullBlock.Get("block.header").Raw))
+			// if err := tHeader.Write(fmt.Sprintf("%s\n", colorOutputHeader)); err != nil {
+			// 	panic(err)
+			// }
+
 			tHeader.Reset()
-			colorOutputHeader := pretty.Pretty([]byte(currentFullBlock.Get("block.header").Raw))
-			if err := tHeader.Write(fmt.Sprintf("%s\n", colorOutputHeader)); err != nil {
-				panic(err)
+
+			lHeader := list.NewWriter()
+			lHeaderTemp := list.List{}
+			lHeader.SetStyle(list.StyleConnectedRounded)
+			lHeaderTemp.Render() // just to avoid the compile error of not using the object
+		
+			// First depth
+			currentFullBlock.Get("block.header").ForEach(func(key, value gjson.Result) bool {
+
+				// Append first Row
+				lHeader.AppendItem(key.String())
+
+
+				if value.Exists() && key.Exists() {
+
+					// Second depth
+					value.ForEach(func(key_sub, value_sub gjson.Result) bool {
+
+						if value_sub.Exists() {
+							lHeader.Indent()
+						
+
+							if value_sub.Exists() && key_sub.Exists() {
+								// Append Second Row
+								lHeader.AppendItem(key_sub.String())
+
+								// Third depth
+								lHeader.Indent()
+								value_sub.ForEach(func(key_sub2, value_sub2 gjson.Result) bool {
+									lHeader.AppendItem(value_sub2.String())
+
+									return true // keep iterating
+								})
+								lHeader.UnIndent()
+							} else {
+								lHeader.AppendItem(value.String())
+							}
+
+							lHeader.UnIndent()
+						} else {
+							
+							lHeader.AppendItem(value.String())
+						}
+
+						return true // keep iterating
+					})
+
+				}
+				
+	
+
+				
+		
+				return true // keep iterating
+			})
+		
+			for _, lineHeader := range strings.Split(lHeader.Render(), "\n") {
+				if err := tHeader.Write(fmt.Sprintf("%s\n", lineHeader)); err != nil {
+					panic(err)
+				}
 			}
+
+
 
 			// Populate Bigger Block Details
 			tCompleteBlock.Reset()
@@ -565,6 +635,9 @@ func writeBlocks(ctx context.Context, info Info, t *text.Text, tCompleteBlock *t
 				l.AppendItem(key)
 
 				if key.String() == "result_finalize_block" {
+					l.Indent()
+					l.AppendItem("...")
+					l.UnIndent()
 					return true // keep iterating
 				}
 				// Second depth
