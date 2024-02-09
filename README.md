@@ -54,7 +54,6 @@ nano ~/.ignite/apps/igniteapps.yml # Then remove the line with the app
 To fine-tune the block processing and give each block more time for examination, you can adjust the following settings in your **`config.yml`** file under the **`validators`** section:
 
 ```yaml
-yamlCopy code
 validators:
   - name: alice
     bonded: 100000000stake
