@@ -26,7 +26,11 @@ To install Blockie, ensure you have Ignite CLI installed and follow these steps:
 ignite app install -g github.com/toschdev/blockie
 ```
 
-2. You can now use the **`ignite blockie start`** command to launch.
+2. You can now use the command to launch.
+
+```bash
+ignite blockie start
+```
 
 ## **Development Workflow**
 
