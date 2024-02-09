@@ -72,4 +72,4 @@ If you encounter any issues or have questions, please file an issue in the repos
 
 Blockie is released under the Apache2 License.
 
-![Blockie](cubie_ignite.png "Blockie")
+<img src="cubie_ignite.png" alt="Blockie" width="200"/>
