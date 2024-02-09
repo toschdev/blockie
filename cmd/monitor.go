@@ -118,34 +118,6 @@ func ShowBlockie(ctxApp context.Context, cp *plugin.ExecutedCommand) error {
 		panic(err)
 	}
 
-	// Creates Health Widget
-	healthWidget, err := text.New()
-	if err != nil {
-		panic(err)
-	}
-	if err := healthWidget.Write("⌛ loading"); err != nil {
-		panic(err)
-	}
-
-	// Creates System Time Widget
-	timeWidget, err := text.New()
-	if err != nil {
-		panic(err)
-	}
-	currentTime := time.Now()
-	if err := timeWidget.Write(fmt.Sprintf("%s\n", currentTime.Format("2006-01-02\n03:04:05 PM"))); err != nil {
-		panic(err)
-	}
-
-	// Creates Connected Peers Widget
-	peerWidget, err := text.New()
-	if err != nil {
-		panic(err)
-	}
-	if err := peerWidget.Write("0"); err != nil {
-		panic(err)
-	}
-
 	// Creates Seconds Between Blocks Widget
 	secondsPerBlockWidget, err := text.New(text.RollContent(), text.WrapAtWords())
 	if err != nil {
@@ -258,7 +230,7 @@ func ShowBlockie(ctxApp context.Context, cp *plugin.ExecutedCommand) error {
 		panic(err)
 	}
 
-	// Creates Gas per Average Transaction Widget
+	// Creates Show Blockie Widget
 	blockieWidget, err := text.New(text.RollContent(), text.WrapAtWords())
 	if err != nil {
 		panic(err)
@@ -298,7 +270,7 @@ func ShowBlockie(ctxApp context.Context, cp *plugin.ExecutedCommand) error {
 	// The functions that execute the updating widgets.
 
 	// system powered widgets
-	go writeTime(ctx, info, timeWidget, 1*time.Second)
+	go writeTime(ctx, info, 1*time.Second)
 
 	go writeSecondsPerBlock(ctx, info, secondsPerBlockWidget, 1*time.Second)
 	go writeGasWidget(ctx, info, gasMaxWidget, gasAvgBlockWidget, gasAvgTransactionWidget, latestGasWidget, 1000*time.Millisecond, connectionSignal, genesisInfo)
@@ -378,6 +350,7 @@ func ShowBlockie(ctxApp context.Context, cp *plugin.ExecutedCommand) error {
 									),
 								),
 							),
+							container.SplitPercent(30),
 						),
 						
 					),
@@ -501,18 +474,13 @@ func writeSecondsPerBlock(ctx context.Context, info Info, t *text.Text, delay ti
 
 // writeTime writes the current system time to the timeWidget.
 // Exits when the context expires.
-func writeTime(ctx context.Context, info Info, t *text.Text, delay time.Duration) {
+func writeTime(ctx context.Context, info Info, delay time.Duration) {
 	ticker := time.NewTicker(delay)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			currentTime := time.Now()
-			t.Reset()
-			if err := t.Write(fmt.Sprintf("%s\n", currentTime.Format("2006-01-02\n03:04:05 PM"))); err != nil {
-				panic(err)
-			}
 			info.blocks.secondsPassed++
 		case <-ctx.Done():
 			return
